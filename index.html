@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Player Evaluations</title>
+  <style>
+    body { font-family: system-ui, Arial; margin: 0; background: #f6f7f9; }
+    .wrap { max-width: 760px; margin: 0 auto; padding: 16px; }
+    .card { background: white; border-radius: 16px; padding: 16px; box-shadow: 0 6px 18px rgba(0,0,0,.08); }
+    h1 { font-size: 20px; margin: 0 0 12px; }
+    label { display: block; font-size: 12px; margin: 14px 0 6px; color: #333; }
+    input, select, textarea, button {
+      width: 100%;
+      font-size: 16px;
+      padding: 12px;
+      border: 1px solid #d7dbe0;
+      border-radius: 12px;
+      box-sizing: border-box;
+      background: #fff;
+    }
+    textarea { min-height: 90px; resize: vertical; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 520px) { .row { grid-template-columns: 1fr; } }
+    .inline { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .check {
+      display: flex; gap: 10px; align-items: center;
+      padding: 10px 12px; border: 1px solid #d7dbe0; border-radius: 12px;
+      background: #fff;
+    }
+    .check input { width: 20px; height: 20px; margin: 0; }
+    button { margin-top: 16px; border: none; background: #111827; color: #fff; font-weight: 600; }
+    button:disabled { opacity: .6; }
+    .msg { margin-top: 12px; font-size: 14px; }
+    .ok { color: #0a7a2f; }
+    .err { color: #b42318; }
+    .hint { font-size: 12px; color: #5b6472; margin-top: 6px; }
+    .meta { font-size: 12px; color: #5b6472; margin-top: 8px; line-height: 1.35; }
+    .divider { height: 1px; background: #eef1f4; margin: 14px 0; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Player Evaluation</h1>
+
+      <label>Coach Name</label>
+      <input id="coach" placeholder="e.g., Coach Bryan" autocomplete="name" />
+
+      <div class="divider"></div>
+
+      <div class="row">
+        <div>
+          <label>Filter by Division</label>
+          <select id="division_filter">
+            <option>Loading...</option>
+          </select>
+          <div class="hint">This list is built from the “division” column in the Players sheet.</div>
+        </div>
+
+        <div>
+          <label>Player</label>
+          <select id="player_select">
+            <option>Loading players...</option>
+          </select>
+          <div class="hint">Players come from the “Players” tab in the Google Sheet.</div>
+        </div>
+      </div>
+
+      <div id="player_meta" class="meta"></div>
+
+      <div class="divider"></div>
+
+      <div class="row">
+        <div>
+          <label>Throwing Hand</label>
+          <select id="throwing_hand">
+            <option value="R" selected>R</option>
+            <option value="L">L</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Positions</label>
+          <div class="inline">
+            <label class="check">
+              <input type="checkbox" id="pitcher" />
+              Pitcher
+            </label>
+            <label class="check">
+              <input type="checkbox" id="catcher" />
+              Catcher
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <label>Scores (0–10)</label>
+      <div class="row">
+        <div>
+          <label>Hitting</label>
+          <input id="hitting" type="number" min="0" max="10" step="1" value="5" inputmode="numeric" />
+        </div>
+        <div>
+          <label>Throwing</label>
+          <input id="throwing" type="number" min="0" max="10" step="1" value="5" inputmode="numeric" />
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Fielding</label>
+          <input id="fielding" type="number" min="0" max="10" step="1" value="5" inputmode="numeric" />
+        </div>
+        <div></div>
+      </div>
+
+      <label>Notes (optional)</label>
+      <textarea id="notes" placeholder="Anything helpful…"></textarea>
+
+      <button id="submit">Submit</button>
+      <div id="msg" class="msg"></div>
+    </div>
+  </div>
+
+  <script>
+    // Paste your Apps Script Web App URL here (ends with /exec)
+    const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbxmrt_e8t9NfFnG3P8_2oLnjV2uZKOnvdV9hqZ6MPrs7i-AO0MtSMbmYvDr6GzQ_qnS/exec";
+
+    const el = (id) => document.getElementById(id);
+    const msg = el("msg");
+    const btn = el("submit");
+
+    // Roster cache
+    let ALL_PLAYERS = [];           // array of player objects from backend
+    let PLAYERS_BY_ID = {};         // quick lookup
+    let FILTERED_PLAYERS = [];      // players shown in dropdown
+
+    function setMsg(text, ok) {
+      msg.textContent = text;
+      msg.className = "msg " + (ok ? "ok" : "err");
+    }
+
+    function num0to10(id) {
+      const v = Number(el(id).value);
+      return Number.isFinite(v) ? v : NaN;
+    }
+
+    function normalizeDivision(d) {
+      return String(d ?? "").trim();
+    }
+
+    function buildDivisionFilter(players) {
+      const filter = el("division_filter");
+      const divisions = new Set();
+
+      players.forEach(p => {
+        const d = normalizeDivision(p.division);
+        if (d) divisions.add(d);
+      });
+
+      const sorted = Array.from(divisions).sort((a,b) => a.localeCompare(b));
+      filter.innerHTML = "";
+
+      const optAll = document.createElement("option");
+      optAll.value = "__ALL__";
+      optAll.textContent = "All Divisions";
+      filter.appendChild(optAll);
+
+      sorted.forEach(d => {
+        const opt = document.createElement("option");
+        opt.value = d;
+        opt.textContent = d;
+        filter.appendChild(opt);
+      });
+
+      // Default selection: All
+      filter.value = "__ALL__";
+    }
+
+    function renderPlayerMeta(playerId) {
+      const meta = el("player_meta");
+      const p = PLAYERS_BY_ID[playerId];
+      if (!p) { meta.textContent = ""; return; }
+
+      meta.textContent =
+        `ID: ${p.player_id} • Birthdate: ${p.birthdate || "-"} • Division: ${p.division || "-"} • Draft: ${p.draft || "-"} • 2025 Division: ${p["2025_division"] || "-"}`;
+    }
+
+    function rebuildPlayerDropdown(keepPlayerId) {
+      const filterVal = el("division_filter").value;
+      const select = el("player_select");
+
+      const filtered = (filterVal === "__ALL__")
+        ? ALL_PLAYERS.slice()
+        : ALL_PLAYERS.filter(p => normalizeDivision(p.division) === filterVal);
+
+      // Sort by name
+      filtered.sort((a,b) => String(a.player_name).localeCompare(String(b.player_name)));
+
+      FILTERED_PLAYERS = filtered;
+
+      select.innerHTML = "";
+      if (!filtered.length) {
+        const opt = document.createElement("option");
+        opt.value = "";
+        opt.textContent = "No players in this division";
+        select.appendChild(opt);
+        renderPlayerMeta("");
+        return;
+      }
+
+      for (const p of filtered) {
+        const opt = document.createElement("option");
+        opt.value = p.player_id;
+        opt.textContent = `${p.player_name}`;
+        select.appendChild(opt);
+      }
+
+      // Keep selection if possible
+      const canKeep = keepPlayerId && filtered.some(p => p.player_id === keepPlayerId);
+      select.value = canKeep ? keepPlayerId : filtered[0].player_id;
+
+      renderPlayerMeta(select.value);
+    }
+
+    async function loadRoster() {
+      const divisionFilter = el("division_filter");
+      const playerSelect = el("player_select");
+
+      if (ENDPOINT_URL.includes("PASTE_YOUR_WEB_APP_URL_HERE")) {
+        divisionFilter.innerHTML = "<option>Set ENDPOINT_URL first</option>";
+        playerSelect.innerHTML = "<option>Set ENDPOINT_URL first</option>";
+        return;
+      }
+
+      divisionFilter.innerHTML = "<option>Loading...</option>";
+      playerSelect.innerHTML = "<option>Loading players...</option>";
+
+      try {
+        const res = await fetch(ENDPOINT_URL + "?action=players");
+        const data = await res.json();
+
+        if (!data.ok) throw new Error(data.error || "Failed to load players");
+
+        ALL_PLAYERS = Array.isArray(data.players) ? data.players : [];
+        PLAYERS_BY_ID = {};
+        for (const p of ALL_PLAYERS) PLAYERS_BY_ID[p.player_id] = p;
+
+        buildDivisionFilter(ALL_PLAYERS);
+        rebuildPlayerDropdown(null);
+
+        divisionFilter.addEventListener("change", () => {
+          // attempt to keep the same player if still visible
+          const currentPlayerId = playerSelect.value;
+          rebuildPlayerDropdown(currentPlayerId);
+        });
+
+        playerSelect.addEventListener("change", () => {
+          renderPlayerMeta(playerSelect.value);
+        });
+
+      } catch (err) {
+        divisionFilter.innerHTML = "<option>Error loading divisions</option>";
+        playerSelect.innerHTML = "<option>Error loading players</option>";
+        el("player_meta").textContent = "";
+      }
+    }
+
+    btn.addEventListener("click", async () => {
+      setMsg("", true);
+
+      const coach = el("coach").value.trim();
+      const playerId = el("player_select").value;
+      const player = PLAYERS_BY_ID[playerId];
+
+      const hitting = num0to10("hitting");
+      const throwing = num0to10("throwing");
+      const fielding = num0to10("fielding");
+
+      if (!coach) { setMsg("Coach name is required.", false); return; }
+      if (!player) { setMsg("Select a valid player.", false); return; }
+
+      for (const [k, v] of [["Hitting", hitting], ["Throwing", throwing], ["Fielding", fielding]]) {
+        if (!Number.isFinite(v) || v < 0 || v > 10) {
+          setMsg(`${k} must be between 0 and 10.`, false);
+          return;
+        }
+      }
+
+      const payload = {
+        coach,
+
+        // player metadata from roster
+        player_id: player.player_id,
+        player_name: player.player_name,
+        birthdate: player.birthdate,
+        division: player.division,
+        draft: player.draft,
+        "2025_division": player["2025_division"],
+
+        // eval fields
+        throwing_hand: el("throwing_hand").value,
+        pitcher: el("pitcher").checked,
+        catcher: el("catcher").checked,
+        hitting,
+        throwing,
+        fielding,
+        notes: el("notes").value.trim()
+      };
+
+      btn.disabled = true;
+      btn.textContent = "Submitting…";
+
+      try {
+        const res = await fetch(ENDPOINT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (data.ok) {
+          setMsg("Saved to spreadsheet ✅", true);
+
+          // Reset only evaluation fields; keep coach & current player selection
+          el("notes").value = "";
+          el("hitting").value = "5";
+          el("throwing").value = "5";
+          el("fielding").value = "5";
+          el("pitcher").checked = false;
+          el("catcher").checked = false;
+          el("throwing_hand").value = "R";
+        } else {
+          setMsg("Error saving: " + (data.error || "Unknown error"), false);
+        }
+      } catch (e) {
+        setMsg("Network error: " + e.message, false);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Submit";
+      }
+    });
+
+    loadRoster();
+  </script>
+</body>
+</html>
