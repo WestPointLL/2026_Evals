@@ -175,6 +175,8 @@
       <div class="playerDetails">
         <span><strong>Birthdate:</strong> ${escapeHtml(formatBirthdateMMDDYYYY(p.birthdate))}</span>
         <span><strong>Division:</strong> ${escapeHtml(p.division || "-")}</span>
+        <span><strong>2025Division:</strong> ${escapeHtml(p.prev_division || "-")}</span>
+        <span><strong>Draft?:</strong> ${escapeHtml(p.draft || "-")}</span>
       </div>
     `;
   }
