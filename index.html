@@ -219,8 +219,8 @@
       ? ALL_PLAYERS.slice()
       : ALL_PLAYERS.filter(p => String(p.division || "").trim() === filter);
 
-    // Sort by name
-    list.sort((a,b) => String(a.player_name || "").localeCompare(String(b.player_name || "")));
+    // Sort by ID
+    list.sort((a,b) => Number(a.player_id) - Number(b.player_id));
 
     sel.innerHTML = "";
     if (!list.length) {
