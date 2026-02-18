@@ -235,7 +235,7 @@
     for (const p of list) {
       const o = document.createElement("option");
       o.value = p.player_id;
-      o.textContent = p.player_name;
+      o.textContent = `${p.player_id} | ${p.player_name}`;
       sel.appendChild(o);
     }
 
