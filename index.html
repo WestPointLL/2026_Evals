@@ -46,6 +46,29 @@
     background:#eef3ff;
     border:2px solid #c7d2fe;
   }
+  /* Color variants for the player card */
+  .playerCard.ok {
+    background: #ecfdf3;
+    border-color: #86efac;
+  }
+  .playerCard.draft_unsure {
+    background: #5edfe8;
+    border-color: #04d0de;
+  }
+  .playerCard.major_nine {
+    background: #ea7bd9;
+    border-color: #e628ed;
+  }
+  .playerCard.major_ {
+    background: #f08d47;
+    border-color: #dd490a;
+  }
+
+  .playerCard.info {
+    background: #eef3ff;
+    border-color: #c7d2fe;
+  }
+
   .playerName{ font-size:22px; font-weight:700; margin-bottom:6px; }
   .playerID{ font-size:28px; font-weight:900; color:#1e3a8a; margin-bottom:8px; }
   .playerDetails{ font-size:15px; line-height:1.5; color:#111827; }
@@ -164,11 +187,31 @@
     return s;
   }
 
+  function cardClassForPlayer(p) {
+    const draft = String(p.draft || "").trim().toLowerCase();
+    const division = String(p.division || "").trim().toLowerCase();
+    const age = Number(p.ll_age);
+
+    // Example rules — tweak to your needs
+    if (draft === "Unsure") return "draft_unsure";
+    if (age <= 9 && draft.includes("Yes")) return "major_nine";
+    if (age == 10 && draft.includes("Yes")) return "major_ten";
+    if (age == 12 && draft.includes("Yes")) return "ok";
+    if (division.includes("majors")) return "warn";
+    
+
+    return "info";
+  }
+
   function renderPlayer(p) {
     const box = el("player_meta");
     if (!p) { box.style.display = "none"; return; }
 
     box.style.display = "block";
+
+    // reset and apply color class
+    box.className = "playerCard " + cardClassForPlayer(p);
+
     box.innerHTML = `
       <div class="playerName">${escapeHtml(p.player_name || "")}</div>
       <div class="playerID">ID: ${escapeHtml(p.player_id || "")}</div>
