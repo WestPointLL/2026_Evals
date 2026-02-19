@@ -286,6 +286,7 @@
     sel.value = canKeep ? keepPlayerId : list[0].player_id;
 
     renderPlayer(PLAYERS_BY_ID[sel.value]);
+    sel.dispatchEvent(new Event("change"));
   }
 
   async function loadRoster() {
@@ -314,6 +315,10 @@
       });
 
       playerSelect.addEventListener("change", () => {
+        renderPlayer(PLAYERS_BY_ID[playerSelect.value]);
+      });
+
+      playerSelect.addEventListener("input", () => {
         renderPlayer(PLAYERS_BY_ID[playerSelect.value]);
       });
 
