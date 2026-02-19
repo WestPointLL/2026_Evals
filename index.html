@@ -213,6 +213,7 @@
     // reset and apply color class
     box.className = "playerCard " + cardClassForPlayer(p);
 
+    console.log(box);
     box.innerHTML = `
       <div class="playerName">${escapeHtml(p.player_name || "")}</div>
       <div class="playerID">ID: ${escapeHtml(p.player_id || "")}</div>
