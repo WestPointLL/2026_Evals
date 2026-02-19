@@ -193,10 +193,10 @@
     const age = Number(p.ll_age);
 
     // Example rules — tweak to your needs
-    if (draft === "Unsure") return "draft_unsure";
-    if (age <= 9 && draft.includes("Yes")) return "major_nine";
-    if (age == 10 && draft.includes("Yes")) return "major_ten";
-    if (age == 12 && draft.includes("Yes")) return "ok";
+    if (draft.includes("unsure")) return "draft_unsure";
+    if (age <= 9 && draft.includes("yes")) return "major_nine";
+    if (age == 10 && draft.includes("yes")) return "major_ten";
+    if (age == 12 && draft.includes("yes")) return "ok";
     if (division.includes("majors")) return "warn";
     
 
