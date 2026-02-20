@@ -47,10 +47,6 @@
     border:2px solid #c7d2fe;
   }
   /* Color variants for the player card */
-  .playerCard.ok {
-    background: #ecfdf3;
-    border-color: #86efac;
-  }
   .playerCard.draft_unsure {
     background: #5edfe8;
     border-color: #04d0de;
@@ -63,7 +59,14 @@
     background: #f08d47;
     border-color: #dd490a;
   }
-
+  .playerCard.minor_eleven {
+    background: #f0e247;
+    border-color: #dda10a;
+  }
+  .playerCard.major_twelve {
+    background: #98db79;
+    border-color: #46d910;
+  }
   .playerCard.info {
     background: #eef3ff;
     border-color: #c7d2fe;
@@ -196,9 +199,8 @@
     if (draft.includes("unsure")) return "draft_unsure";
     if (age <= 9 && draft.includes("yes")) return "major_nine";
     if (age == 10 && draft.includes("yes")) return "major_ten";
-    if (age == 12 && draft.includes("yes")) return "ok";
-    if (division.includes("majors")) return "warn";
-    
+    if (age == 11 && draft.inclues("no")) return "minor_eleven";
+    if (age == 12 && draft.includes("yes")) return "major_twelve";    
 
     return "info";
   }
