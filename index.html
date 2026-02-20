@@ -199,7 +199,7 @@
     if (draft.includes("unsure")) return "draft_unsure";
     if (age <= 9 && draft.includes("yes")) return "major_nine";
     if (age == 10 && draft.includes("yes")) return "major_ten";
-    if (age >= 11 && draft.inclues("no")) return "minor_eleven";
+    if (age >= 11 && draft.includes("no")) return "minor_eleven";
     if ((age >= 11 && draft.includes("yes")) || (age <= 10 && draft.inclues("no"))) return "ok";    
 
     return "info";
