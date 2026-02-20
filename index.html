@@ -63,7 +63,7 @@
     background: #f0e247;
     border-color: #dda10a;
   }
-  .playerCard.major_twelve {
+  .playerCard.ok {
     background: #98db79;
     border-color: #46d910;
   }
@@ -199,8 +199,8 @@
     if (draft.includes("unsure")) return "draft_unsure";
     if (age <= 9 && draft.includes("yes")) return "major_nine";
     if (age == 10 && draft.includes("yes")) return "major_ten";
-    if (age == 11 && draft.inclues("no")) return "minor_eleven";
-    if (age == 12 && draft.includes("yes")) return "major_twelve";    
+    if (age >= 11 && draft.inclues("no")) return "minor_eleven";
+    if ((age >= 11 && draft.includes("yes")) || (age <= 10 && draft.inclues("no"))) return "ok";    
 
     return "info";
   }
