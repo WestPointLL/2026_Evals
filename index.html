@@ -385,7 +385,17 @@
     if (!data.ok) return;
 
     const s = data.score;
-    if (!s) return;
+    if (!s){
+          // no existing record; reset fields (optional)
+      el("throwing_hand").value = "R";
+      el("pitcher").checked = false;
+      el("catcher").checked = false;
+      el("hitting").value = "";
+      el("throwing").value = "";
+      el("fielding").value = "";
+      el("notes").value = "";
+      return;
+    }
 
     if (s.throwing_hand) el("throwing_hand").value = s.throwing_hand;
     if (s.hitting !== "") el("hitting").value = s.hitting;
