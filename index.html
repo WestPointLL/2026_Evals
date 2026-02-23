@@ -84,8 +84,8 @@
   <div class="card">
     <h1>Player Evaluation</h1>
 
-    <label>Coach Name</label>
-    <input id="coach" placeholder="e.g., Coach Bryan" autocomplete="name" />
+    <label>Coach</label>
+    <select id="coach"></select>
 
     <div class="divider"></div>
 
@@ -320,13 +320,16 @@
 
       playerSelect.addEventListener("change", () => {
         renderPlayer(PLAYERS_BY_ID[playerSelect.value]);
+        fetchAndPrefillScore();
       });
 
       playerSelect.addEventListener("input", () => {
         renderPlayer(PLAYERS_BY_ID[playerSelect.value]);
       });
 
-    } catch (err) {
+    } 
+    
+    catch (err) {
       divisionFilter.innerHTML = "<option>Error loading</option>";
       playerSelect.innerHTML = "<option>Error loading</option>";
       renderPlayer(null);
@@ -334,28 +337,70 @@
     }
   }
 
-  function initCoachPersistence() {
-    const coachInput = el("coach");
+  async function loadCoaches() {
+    const sel = el("coach");
+    sel.innerHTML = "<option>Loading…</option>";
 
-    // Load saved coach name
+    const res = await fetch(ENDPOINT_URL + "?action=coaches");
+    const data = await res.json();
+
+    if (!data.ok) {
+      sel.innerHTML = "<option>Error loading coaches</option>";
+      return;
+    }
+
+    sel.innerHTML = "";
+    const coaches = data.coaches || [];
+
+    coaches.sort((a,b)=>a.localeCompare(b));
+
+    for (const c of coaches) {
+      const o = document.createElement("option");
+      o.value = c;
+      o.textContent = c;
+      sel.appendChild(o);
+    }
+
+    // restore previous coach
     const saved = localStorage.getItem(COACH_STORAGE_KEY);
-    if (saved) coachInput.value = saved;
+    if (saved && coaches.includes(saved)) sel.value = saved;
 
-    // Save as they type (debounced enough by browser)
-    coachInput.addEventListener("input", () => {
-      localStorage.setItem(COACH_STORAGE_KEY, coachInput.value.trim());
-    });
-
-    // Also save on blur (extra safety)
-    coachInput.addEventListener("blur", () => {
-      localStorage.setItem(COACH_STORAGE_KEY, coachInput.value.trim());
+    sel.addEventListener("change", () => {
+      localStorage.setItem(COACH_STORAGE_KEY, sel.value);
+      fetchAndPrefillScore();
     });
   }
+
+  async function fetchAndPrefillScore() {
+    const coach = el("coach").value;
+    const playerId = el("player_select").value;
+
+    if (!coach || !playerId) return;
+
+    const res = await fetch(
+      ENDPOINT_URL + `?action=score&coach=${encodeURIComponent(coach)}&player_id=${encodeURIComponent(playerId)}`
+    );
+
+    const data = await res.json();
+    if (!data.ok) return;
+
+    const s = data.score;
+    if (!s) return;
+
+    if (s.throwing_hand) el("throwing_hand").value = s.throwing_hand;
+    if (s.hitting !== "") el("hitting").value = s.hitting;
+    if (s.throwing !== "") el("throwing").value = s.throwing;
+    if (s.fielding !== "") el("fielding").value = s.fielding;
+    if (s.notes) el("notes").value = s.notes;
+
+    el("pitcher").checked = !!s.pitcher;
+    el("catcher").checked = !!s.catcher;
+}
 
   btn.addEventListener("click", async () => {
     setMsg("", true);
 
-    const coach = el("coach").value.trim();
+    const coach = el("coach").value;
     if (!coach) { setMsg("Coach name is required.", false); return; }
 
     const playerId = el("player_select").value;
@@ -422,8 +467,12 @@
   });
 
   // Init
-  initCoachPersistence();
-  loadRoster();
+  (async function init(){
+    await loadCoaches();
+    await loadRoster();
+    fetchAndPrefillScore();
+})();
+
 </script>
 </body>
 </html>
